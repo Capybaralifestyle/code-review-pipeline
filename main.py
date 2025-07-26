@@ -4,30 +4,30 @@ import logging
 from typing import TypedDict, List
 
 from langgraph.graph import StateGraph, END
-from autogen import AssistantAgent, UserProxyAgent, ConversableAgent
+from autogen import AssistantAgent, UserProxyAgent
 from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
 from pydantic import BaseModel
 
-# ---------- 1. Data models ----------
+# ---------- Data models ----------
 class ReviewRequest(BaseModel):
     id: str
     code: str
-    language: str = "python"
+    language: str          # free-form language tag
 
 class ReviewResult(BaseModel):
     id: str
     review: str
     status: str = "completed"
 
-# ---------- 2. LangGraph state ----------
+# ---------- LangGraph state ----------
 class GraphState(TypedDict):
     request: ReviewRequest
     review: str | None
     messages: List[dict]
 
-# ---------- 3. AutoGen agents ----------
+# ---------- AutoGen agents ----------
 OLLAMA_CONFIG = {
-    "model": "gemma3:latest",
+    "model": "deepseek-r1:latest",
     "base_url": "http://localhost:11434/v1",
     "api_type": "ollama",
     "api_key": "ollama",
@@ -35,8 +35,11 @@ OLLAMA_CONFIG = {
 
 reviewer = AssistantAgent(
     name="CodeReviewer",
-    system_message="You are a strict code reviewer. "
-                   "Return concise bullet points of issues and suggestions.",
+    system_message=(
+        "You are a senior, language-agnostic code reviewer. "
+        "Identify bugs, style issues, security flaws, and suggest concise fixes. "
+        "Reply with bullet points and short code snippets when helpful."
+    ),
     llm_config=OLLAMA_CONFIG,
 )
 
@@ -47,10 +50,14 @@ user_proxy = UserProxyAgent(
     llm_config=OLLAMA_CONFIG,
 )
 
-# ---------- 4. LangGraph nodes ----------
+# ---------- LangGraph nodes ----------
 def ingest(state: GraphState) -> GraphState:
-    code = state["request"].code
-    prompt = f"Please review the following {state['request'].language} code:\n\n{code}"
+    lang  = state["request"].language
+    code  = state["request"].code
+    prompt = (
+        f"Review the following {lang} code for correctness, style, security, "
+        f"and performance. Provide concise bullet points.\n\n```{lang}\n{code}\n```"
+    )
     state["messages"] = [{"role": "user", "content": prompt}]
     return state
 
@@ -60,11 +67,11 @@ def run_review(state: GraphState) -> GraphState:
         message=state["messages"][0]["content"],
         clear_history=True,
     )
-    last_message = user_proxy.last_message()["content"]
-    state["review"] = last_message
+    last = user_proxy.last_message()["content"]
+    state["review"] = last
     return state
 
-# ---------- 5. Build the graph ----------
+# ---------- Build workflow ----------
 workflow = StateGraph(GraphState)
 workflow.add_node("ingest", ingest)
 workflow.add_node("run_review", run_review)
@@ -73,19 +80,18 @@ workflow.add_edge("ingest", "run_review")
 workflow.add_edge("run_review", END)
 app = workflow.compile()
 
-# ---------- 6. Kafka plumbing ----------
+# ---------- Kafka config ----------
 KAFKA_BOOTSTRAP = "localhost:9092"
-IN_TOPIC = "code_review_requests"
+IN_TOPIC  = "code_review_requests"
 OUT_TOPIC = "code_review_results"
 
 def safe_deserializer(raw):
-    """Skip empty / bad JSON."""
     if raw is None:
         return None
     try:
         return json.loads(raw.decode())
     except Exception as e:
-        logging.warning("Bad message skipped: %s", e)
+        logging.warning("Bad Kafka message skipped: %s", e)
         return None
 
 async def consume_and_process():
@@ -104,25 +110,25 @@ async def consume_and_process():
 
     try:
         async for msg in consumer:
-            if msg.value is None:        # skip empty / bad messages
+            if msg.value is None:
                 continue
             try:
                 req = ReviewRequest(**msg.value)
                 state = GraphState(request=req, review=None, messages=[])
-                final_state = await app.ainvoke(state)
+                final = await app.ainvoke(state)
                 result = ReviewResult(
                     id=req.id,
-                    review=final_state["review"] or "No review returned",
+                    review=final["review"] or "No review returned",
                 )
-                await producer.send_and_wait(OUT_TOPIC, result.dict())
-                logging.info("Processed %s", req.id)
+                await producer.send_and_wait(OUT_TOPIC, result.model_dump())
+                logging.info("Processed %s (%s)", req.id, req.language)
             except Exception as e:
                 logging.exception("Error processing message %s", msg.value)
     finally:
         await consumer.stop()
         await producer.stop()
 
-# ---------- 7. Run ----------
+# ---------- Run ----------
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     asyncio.run(consume_and_process())

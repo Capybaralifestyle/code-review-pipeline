@@ -4,7 +4,7 @@ A lightweight, event-driven code-review engine that turns any code snippet into 
 ## What it does
 1. **Ingest** – Drop a file or snippet into Kafka topic `code_review_requests`.
 2. **Orchestrate** – LangGraph spins up two AutoGen agents (Reviewer + UserProxy).
-3. **Analyse** – Gemma-3 (local LLM) produces bullet-point reviews.
+3. **Analyse** – deepseek-r1:latest (local LLM) produces bullet-point reviews.
 4. **Deliver** – Results land in `code_review_results` as JSON, ready for webhooks, CI, or dashboards.
 
 ## Core Tech Stack
@@ -13,7 +13,7 @@ A lightweight, event-driven code-review engine that turns any code snippet into 
 |-------|------|
 | Workflow Engine | LangGraph |
 | Agents | AutoGen AssistantAgent + UserProxyAgent |
-| LLM | Gemma-3 via Ollama |
+| LLM | ollama pull deepseek-r1:latest via Ollama |
 | Message Bus | Apache Kafka |
 | Language | Python 3.10+ |
 | Deployment | Docker Compose |
@@ -21,7 +21,7 @@ A lightweight, event-driven code-review engine that turns any code snippet into 
 ## Key Features
 * **100% local** – no cloud keys, runs on Windows / macOS / Linux.
 * **Scalable** – add more reviewers, queues, or GPU workers at will.
-* **Extensible** – swap Gemma-3 for any Ollama model in one line.
+* **Extensible** – swap ollama pull deepseek-r1:latest for any Ollama model in one line.
 * **CI-friendly** – JSON output integrates with GitHub Actions, Jenkins, or webhooks.
 
 ## Use-Cases
@@ -39,7 +39,7 @@ Real-time, LLM-powered code reviews using:
 
 - **LangGraph** (state-machine)
 - **AutoGen** (Assistant + UserProxy agents)
-- **Gemma-3** via Ollama (local GPU/CPU)
+- **Gollama pull deepseek-r1:latest** via Ollama (local GPU/CPU)
 - **Apache Kafka** (event bus)
 
 ## Quick Start
@@ -51,7 +51,7 @@ Real-time, LLM-powered code reviews using:
 ## Pull model
 
 ```bash
-ollama pull gemma3:4b
+ollama pull deepseek-r1:latest
 ```
 
 ## 1. Run consumer
