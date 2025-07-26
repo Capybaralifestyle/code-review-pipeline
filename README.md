@@ -1,3 +1,12 @@
+# Code-Review Pipeline
+
+Real-time, LLM-powered code reviews using:
+
+- **LangGraph** (state-machine)
+- **AutoGen** (Assistant + UserProxy agents)
+- **Gemma-3** via Ollama (local GPU/CPU)
+- **Apache Kafka** (event bus)
+
 ## One-Sentence Pitch
 A lightweight, event-driven code-review engine that turns any code snippet into instant, AI-generated feedback using **Gemma-3**, **LangGraph**, **AutoGen** agents, and **Apache Kafka**.
 
@@ -32,15 +41,6 @@ A lightweight, event-driven code-review engine that turns any code snippet into 
 
 ## Status
 v1.0.0 – fully working on Windows 11; published under MIT license.
-
-# Code-Review Pipeline
-
-Real-time, LLM-powered code reviews using:
-
-- **LangGraph** (state-machine)
-- **AutoGen** (Assistant + UserProxy agents)
-- **Gemma-3** via Ollama (local GPU/CPU)
-- **Apache Kafka** (event bus)
 
 ## Quick Start
 
