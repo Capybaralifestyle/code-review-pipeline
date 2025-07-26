@@ -51,7 +51,7 @@ v1.0.0 – fully working on Windows 11; published under MIT license.
 ## Pull model
 
 ```bash
-ollama pull gemma3:4b
+ollama pull gemma3:latest
 ```
 
 ## 1. Run consumer
