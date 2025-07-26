@@ -27,7 +27,7 @@ class GraphState(TypedDict):
 
 # ---------- AutoGen agents ----------
 OLLAMA_CONFIG = {
-    "model": "deepseek-r1:latest",
+    "model": "gemma3:latest",
     "base_url": "http://localhost:11434/v1",
     "api_type": "ollama",
     "api_key": "ollama",
